@@ -204,10 +204,12 @@
   <span class="highlight">experience</span> - List work history and roles
   <span class="highlight">projects</span>   - View cloud and automation projects
   <span class="highlight">contact</span>    - Display contact information
+  <span class="highlight">neofetch</span>   - Display system architecture info
   <span class="highlight">clear</span>      - Clear terminal output
   <span class="highlight">download</span>   - Download Resume (PDF)
   <span class="highlight">date</span>       - Print the system date and time
   <span class="highlight">gui</span>        - Boot into Graphical User Interface
+  <span class="highlight">matrix</span>     - Enter the matrix
   <span class="highlight">sudo</span>       - Execute command with root privileges`,
 
             "whoami": `USER: <span class="highlight">Mohammed Rahil T</span>
@@ -374,6 +376,15 @@ custom Bash scripts to alert the engineering team instantly via Discord webhooks
                     this.value = '';
                     inputDisplay.textContent = '';
                 }
+            } else if (e.key === 'Tab') {
+                e.preventDefault();
+                const current = this.value.toLowerCase();
+                const cmds = Object.keys(fileSystem).concat(['ls', 'sudo', 'sudo rm -rf /', 'matrix', 'neofetch']);
+                const match = cmds.find(c => c.startsWith(current));
+                if (match) {
+                    this.value = match;
+                    inputDisplay.textContent = this.value;
+                }
             }
         });
 
@@ -438,11 +449,88 @@ custom Bash scripts to alert the engineering team instantly via Discord webhooks
                 return;
             }
 
+            if (cmd === 'sudo rm -rf /' || cmd === 'sudo rm -rf /*') {
+                inputLine.style.display = 'none';
+                cmdInput.disabled = true;
+                printOutput("<span class='error' style='font-weight:bold;'>[FATAL] ROOT PRIVILEGES DETECTED. INITIATING SYSTEM WIPEOUT...</span>");
+                
+                let count = 0;
+                const crashInterval = setInterval(() => {
+                    const files = ['/boot/vmlinuz', '/etc/shadow', '/usr/bin/bash', '/home/rahil/projects.dir', '/var/log/syslog', '/dev/sda1'];
+                    printOutput(`<span class='error'>rm: cannot remove '${files[Math.floor(Math.random()*files.length)]}': Permission denied</span>`);
+                    count++;
+                    if (count > 35) {
+                        clearInterval(crashInterval);
+                        document.body.classList.remove('crt');
+                        document.body.style.backgroundColor = '#aa0000';
+                        document.body.innerHTML = '<div style="color: white; font-size: 1.5rem; text-align: center; margin-top: 30vh; font-family: monospace;">KERNEL PANIC - NOT SYNCING: FATAL EXCEPTION<br><br>System memory corrupted.<br>Rebooting in 3 seconds...</div>';
+                        setTimeout(() => location.reload(), 3500);
+                    }
+                }, 40);
+                return;
+            }
+
             if (cmd.startsWith('sudo')) {
                 printOutput("<span class='error'>rahil is not in the sudoers file. This incident will be reported.</span>");
                 return;
             }
+
+            if (cmd === 'matrix') {
+                inputLine.style.display = 'none';
+                cmdInput.disabled = true;
+                const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789$+-*/=%""\'#&_(),.;:?!\\|{}<>[]^~';
+                let matrixCount = 0;
+                const matrixInterval = setInterval(() => {
+                    let line = '';
+                    for (let i = 0; i < 60; i++) {
+                        line += chars.charAt(Math.floor(Math.random() * chars.length)) + ' ';
+                    }
+                    printOutput(`<span style="color: #00ff41; opacity: ${0.4 + Math.random() * 0.6};">${line}</span>`);
+                    matrixCount++;
+                    if (matrixCount > 50) {
+                        clearInterval(matrixInterval);
+                        cmdInput.disabled = false;
+                        inputLine.style.display = 'flex';
+                        printOutput("<br>Matrix connection terminated.<br>");
+                        cmdInput.focus();
+                        terminalWrapper.scrollTop = terminalWrapper.scrollHeight;
+                    }
+                }, 50);
+                return;
+            }
             
+            if (cmd === 'neofetch') {
+                const uptime = Math.max(1, Math.floor(performance.now() / 60000));
+                const neo = `<div style="display:flex; align-items:center; gap: 20px; flex-wrap: wrap;">
+<div style="color: #E95420; font-weight: bold; line-height: 1.2; font-size: 13px;" class="ascii-art">
+         _-_         
+      /~~   ~~\\      
+   /~~         ~~\\   
+  {               }  
+   \\  _-     -_  /   
+     ~  \\\\ //  ~     
+  _- -   | | _- _    
+    _ -  | |   -_    
+        // \\\\        
+</div>
+<div>
+<span class="highlight">rahil</span><span style="color:#fff;">@</span><span class="host">cloud-server</span>
+<span style="color:#fff;">-------------------</span>
+<span class="highlight">OS:</span> R.OS v2.0.26 LTS
+<span class="highlight">Host:</span> AWS EC2 t3.micro
+<span class="highlight">Kernel:</span> 5.15.0-cloud-generic
+<span class="highlight">Uptime:</span> ${uptime} mins
+<span class="highlight">Packages:</span> 1420 (dpkg), 18 (helm)
+<span class="highlight">Shell:</span> bash 5.1.16
+<span class="highlight">Role:</span> DevOps & Cloud Engineer
+<span class="highlight">CPU:</span> AWS Graviton2 (2) @ 2.500GHz
+<span class="highlight">Memory:</span> 482MiB / 1024MiB
+</div>
+</div>`;
+                printOutput(neo);
+                return;
+            }
+
             if (cmd === 'ls') {
                  printOutput("<span class='accent'>help.sh  whoami.txt  skills.json  experience.log  projects.dir  contact.cfg</span>");
                  return;
