@@ -512,10 +512,10 @@ custom Bash scripts to alert the engineering team instantly via Discord webhooks
                 return;
             }
 
-            if (cmd === 'sudo rm -rf /' || cmd === 'sudo rm -rf /*') {
+            if (cmd === 'sudo rm -rf /' || cmd === 'sudo rm -rf /*' || cmd === 'rm -rf /' || cmd === 'rm -rf /*') {
                 inputLine.style.display = 'none';
                 cmdInput.disabled = true;
-                printOutput("<span class='error' style='font-weight:bold;'>[FATAL] ROOT PRIVILEGES DETECTED. INITIATING SYSTEM WIPEOUT...</span>");
+                printOutput("<span class='error' style='font-weight:bold;'>[FATAL] SYSTEM WIPEOUT INITIATED...</span>");
                 
                 let count = 0;
                 const crashInterval = setInterval(() => {
