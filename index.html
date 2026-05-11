@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mohammed Rahil | Terminal</title>
+    
+    <!-- Fira Code Font for authentic terminal look -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-color: #050505;
+            --text-color: #00ff41; /* Classic Terminal Green */
+            --prompt-user: #00E5FF; /* Cyan */
+            --prompt-host: #ff0055; /* Pink/Red */
+            --prompt-path: #f0a030; /* Yellow */
+            --glow: 0 0 5px rgba(0, 255, 65, 0.4);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body, html {
+            height: 100%;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Fira Code', monospace;
+            font-size: 15px;
+            line-height: 1.5;
+            overflow: hidden; /* Hide outer scroll, handle inside terminal */
+        }
+
+        /* CRT Scanline Effect */
+        .crt::before {
+            content: " ";
+            display: block;
+            position: absolute;
+            top: 0; left: 0; bottom: 0; right: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                        linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 999;
+            background-size: 100% 2px, 3px 100%;
+            pointer-events: none;
+        }
+
+        #terminal-wrapper {
+            height: 100%;
+            padding: 20px;
+            overflow-y: auto;
+            position: relative;
+            text-shadow: var(--glow);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #000;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #004411;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-color);
+        }
+
+        .output-line {
+            margin-bottom: 4px;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+        }
+
+        .output-block {
+            margin-bottom: 16px;
+        }
+
+        /* Prompt Styling */
+        .prompt-line {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        .prompt {
+            white-space: pre;
+            display: flex;
+        }
+
+        .prompt .user { color: var(--prompt-user); font-weight: bold; }
+        .prompt .at { color: #fff; }
+        .prompt .host { color: var(--prompt-host); font-weight: bold; }
+        .prompt .colon { color: #fff; }
+        .prompt .path { color: var(--prompt-path); font-weight: bold; }
+        .prompt .symbol { color: #fff; margin-right: 8px; }
+
+        /* Input Handling */
+        #cmd-input {
+            background: transparent;
+            border: none;
+            color: transparent; /* Hide actual text, show via span */
+            outline: none;
+            font-family: inherit;
+            font-size: inherit;
+            width: 1px;
+            height: 1px;
+            position: absolute;
+            opacity: 0;
+        }
+
+        #input-display {
+            color: #fff;
+            white-space: pre;
+        }
+
+        /* Blinking Cursor */
+        .cursor {
+            display: inline-block;
+            width: 8px;
+            height: 1.2em;
+            background-color: #fff;
+            vertical-align: middle;
+            animation: blink 1s step-end infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        /* Formatting Classes */
+        .table { display: table; width: 100%; max-width: 800px; margin-top: 10px; }
+        .tr { display: table-row; }
+        .td { display: table-cell; padding: 4px 10px 4px 0; }
+        .th { display: table-cell; padding: 4px 10px 4px 0; font-weight: bold; color: var(--prompt-user); border-bottom: 1px dashed var(--text-color); }
+        
+        .highlight { color: #fff; font-weight: bold; }
+        .accent { color: var(--prompt-path); }
+        .error { color: #ff3333; }
+        
+        .ascii-art {
+            color: var(--prompt-user);
+            font-size: 12px;
+            line-height: 1.2;
+            margin-bottom: 15px;
+            overflow-x: hidden;
+        }
+
+        @media (max-width: 768px) {
+            .ascii-art { font-size: 8px; }
+            body { font-size: 13px; }
+        }
+    </style>
+</head>
+<body class="crt">
+
+    <div id="terminal-wrapper" onclick="document.getElementById('cmd-input').focus()">
+        <div id="output"></div>
+        
+        <div class="prompt-line" id="input-line" style="display: none;">
+            <div class="prompt">
+                <span class="user">rahil</span><span class="at">@</span><span class="host">cloud-server</span><span class="colon">:</span><span class="path">~</span><span class="symbol">$</span>
+            </div>
+            <span id="input-display"></span><span class="cursor"></span>
+        </div>
+        
+        <!-- Hidden real input field for mobile keyboard support -->
+        <input type="text" id="cmd-input" autocomplete="off" spellcheck="false" autofocus>
+    </div>
+
+    <script>
+        const outputDiv = document.getElementById('output');
+        const inputLine = document.getElementById('input-line');
+        const cmdInput = document.getElementById('cmd-input');
+        const inputDisplay = document.getElementById('input-display');
+        const terminalWrapper = document.getElementById('terminal-wrapper');
+
+        // ASCII Art Banner
+        const banner = `
+  __  __       _                                 _   ____       _     _ _   
+ |  \\/  | ___ | |__   __ _ _ __ ___  _ __ ___  __| | |  _ \\ __ _| |__ (_) |  
+ | |\\/| |/ _ \\| '_ \\ / _\` | '_ \` _ \\| '_ \` _ \\/ _\` | | |_) / _\` | '_ \\| | |  
+ | |  | | (_) | | | | (_| | | | | | | | | | | (_| | |  _ < (_| | | | | | |  
+ |_|  |_|\\___/|_| |_|\\__,_|_| |_| |_|_| |_| |_|\\__,_| |_| \\_\\__,_|_| |_|_|_|  
+                                                                             
+ DevOps & Cloud Engineer | Initializing system...
+`;
+
+        // Content Database
+        const fileSystem = {
+            "help": `Available commands:
+  <span class="highlight">whoami</span>     - Display professional summary
+  <span class="highlight">skills</span>     - View technical stack and proficiencies
+  <span class="highlight">experience</span> - List work history and roles
+  <span class="highlight">projects</span>   - View cloud and automation projects
+  <span class="highlight">contact</span>    - Display contact information
+  <span class="highlight">clear</span>      - Clear terminal output
+  <span class="highlight">download</span>   - Download Resume (PDF)
+  <span class="highlight">date</span>       - Print the system date and time
+  <span class="highlight">gui</span>        - Boot into Graphical User Interface
+  <span class="highlight">sudo</span>       - Execute command with root privileges`,
+
+            "whoami": `USER: <span class="highlight">Mohammed Rahil T</span>
+ROLE: <span class="highlight">DevOps & Cloud Engineer</span>
+LOC:  Malappuram, Kerala, India
+
+I don't just maintain servers — I automate workflows, secure infrastructure, 
+and ensure high availability for production environments. Hands-on experience 
+managing production Linux servers, CI/CD pipelines, and multi-cloud infrastructure 
+across AWS and Azure. Skilled in containerization with Docker and Kubernetes.`,
+
+            "skills": `Technical Stack Loaded:
+
+<span class="accent">[Cloud Platforms]</span>
+AWS (EC2, S3, IAM, VPC, ALB, CloudWatch), Microsoft Azure (VMs, Storage, Networking)
+
+<span class="accent">[Containerization & IaC]</span>
+Docker, Docker Compose, Kubernetes, Terraform
+
+<span class="accent">[CI/CD & DevOps]</span>
+GitLab CI/CD, GitHub Actions, Jenkins, Git Workflows
+
+<span class="accent">[Web Servers & Hosting]</span>
+Nginx, Apache, Plesk, cPanel, DNS Management, SSL/TLS, Load Balancing
+
+<span class="accent">[Observability]</span>
+Prometheus, Grafana, cAdvisor
+
+<span class="accent">[Automation & OS]</span>
+Bash, Python, Cron Jobs, Linux (Ubuntu, CentOS)`,
+
+            "experience": `Fetching access logs... done.
+
+<span class="highlight">Feb 2026 - Present | Codelattice | DevOps Engineer</span>
+> Administered 10+ production Linux servers (Ubuntu/CentOS).
+> Designed/implemented full CI/CD pipelines using GitLab CI/CD & GitHub Actions.
+> Configured Nginx/Apache web servers, achieving zero-downtime client deployments.
+> Monitored infrastructure health using Prometheus and Grafana.
+
+<span class="highlight">Aug 2025 - Jan 2026 | Febno Technologies | Cloud Support Associate Intern</span>
+> Provisioned AWS and Azure resources (EC2/VMs, VPC, IAM) for HA environments.
+> Implemented Docker and Kubernetes workflows for Odoo ERP.
+> Enforced IAM policies and least-privilege access to harden cloud security.`,
+
+            "projects": `Scanning deployed architecture...
+
+<span class="highlight">1. High Availability Web Hosting Architecture (AWS)</span>
+Architected a production-grade HA environment using VPC, EC2 (Ubuntu), and Nginx 
+across multiple AZs. Engineered ALB routing with Auto Scaling Groups for zero 
+single-point-of-failure.
+
+<span class="highlight">2. Odoo ERP Dockerization</span>
+Containerized multi-version instances (Odoo 16/17) using Docker Compose. 
+Defined stacks with PostgreSQL and Nginx reverse proxy, eliminating environment 
+inconsistencies between staging and production.
+
+<span class="highlight">3. Container Monitoring Stack</span>
+Architected a monitoring stack using Prometheus for metric collection and cAdvisor 
+for real-time container analysis. Built Grafana dashboards for proactive alerting.
+
+<span class="highlight">4. Automated Server Alerts</span>
+Implemented an automated notification system for Plesk server backups utilizing 
+custom Bash scripts to alert the engineering team instantly via Discord webhooks.`,
+
+            "contact": `Establishing secure connection...
+
+<span class="accent">Email:</span>    <a href="mailto:rahilkkln@gmail.com" style="color: #fff; text-decoration: none;">rahilkkln@gmail.com</a>
+<span class="accent">Phone:</span>    +91 7994568572
+<span class="accent">LinkedIn:</span> <a href="https://linkedin.com/in/rahilt" target="_blank" style="color: #fff; text-decoration: none;">linkedin.com/in/rahilt</a>
+<span class="accent">GitHub:</span>   <a href="https://github.com/rahiloff" target="_blank" style="color: #fff; text-decoration: none;">github.com/rahiloff</a>`,
+            
+            "gui": `Initiating X11 window system...<br><br><span class="accent">Redirecting to Graphical Portfolio...</span>`
+        };
+
+        // Boot Sequence Simulation
+        const bootSequence = [
+            "Mounting root filesystem... [OK]",
+            "Starting networking service... [OK]",
+            "Loading cloud configuration profiles... [OK]",
+            "Initializing Docker daemon... [OK]",
+            "Starting kubelet... [OK]",
+            "Establishing connection to AWS/Azure environments... [OK]",
+            "Welcome to R.OS v2.0.26 LTS",
+            "Type 'help' to see available commands."
+        ];
+
+        async function typeText(text, element, speed = 10) {
+            return new Promise(resolve => {
+                let i = 0;
+                function type() {
+                    if (i < text.length) {
+                        element.innerHTML += text.charAt(i);
+                        i++;
+                        terminalWrapper.scrollTop = terminalWrapper.scrollHeight;
+                        setTimeout(type, speed);
+                    } else {
+                        resolve();
+                    }
+                }
+                type();
+            });
+        }
+
+        async function runBootSequence() {
+            // Print ASCII Art instantly
+            const bannerDiv = document.createElement('div');
+            bannerDiv.className = 'ascii-art';
+            bannerDiv.innerHTML = banner;
+            outputDiv.appendChild(bannerDiv);
+
+            // Print boot lines
+            for (let i = 0; i < bootSequence.length; i++) {
+                const lineDiv = document.createElement('div');
+                lineDiv.className = 'output-line';
+                outputDiv.appendChild(lineDiv);
+                await typeText(bootSequence[i], lineDiv, i === bootSequence.length - 2 ? 30 : 5);
+                await new Promise(r => setTimeout(r, 100)); // slight pause between lines
+            }
+
+            const br = document.createElement('br');
+            outputDiv.appendChild(br);
+            
+            // Show prompt
+            inputLine.style.display = 'flex';
+            cmdInput.focus();
+            terminalWrapper.scrollTop = terminalWrapper.scrollHeight;
+        }
+
+        // Command History State
+        const commandHistory = [];
+        let historyIndex = -1;
+
+        // Handle Input
+        cmdInput.addEventListener('input', function() {
+            inputDisplay.textContent = this.value;
+        });
+
+        cmdInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                const command = this.value.trim();
+                if (command) {
+                    commandHistory.push(command);
+                    historyIndex = commandHistory.length;
+                }
+                
+                this.value = '';
+                inputDisplay.textContent = '';
+                processCommand(command.toLowerCase());
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (historyIndex > 0) {
+                    historyIndex--;
+                    this.value = commandHistory[historyIndex];
+                    inputDisplay.textContent = this.value;
+                }
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (historyIndex < commandHistory.length - 1) {
+                    historyIndex++;
+                    this.value = commandHistory[historyIndex];
+                    inputDisplay.textContent = this.value;
+                } else {
+                    historyIndex = commandHistory.length;
+                    this.value = '';
+                    inputDisplay.textContent = '';
+                }
+            }
+        });
+
+        function printPrompt(cmdText) {
+            const promptHTML = `
+                <div class="prompt-line">
+                    <div class="prompt">
+                        <span class="user">rahil</span><span class="at">@</span><span class="host">cloud-server</span><span class="colon">:</span><span class="path">~</span><span class="symbol">$</span>
+                    </div>
+                    <span style="color: #fff; margin-left: 8px;">${cmdText}</span>
+                </div>
+            `;
+            outputDiv.insertAdjacentHTML('beforeend', promptHTML);
+        }
+
+        function printOutput(htmlContent) {
+            const outDiv = document.createElement('div');
+            outDiv.className = 'output-block';
+            outDiv.innerHTML = htmlContent;
+            outputDiv.appendChild(outDiv);
+            terminalWrapper.scrollTop = terminalWrapper.scrollHeight;
+        }
+
+        function processCommand(cmd) {
+            if (!cmd) {
+                printPrompt("");
+                return;
+            }
+
+            printPrompt(cmd);
+
+            // Handle specific commands
+            if (cmd === 'clear') {
+                outputDiv.innerHTML = '';
+                return;
+            }
+
+            if (cmd === 'download') {
+                printOutput("Initiating secure file transfer... <br><span class='accent'>Opening Mohammed_Rahil_CV.pdf...</span>");
+                setTimeout(() => {
+                    window.open('Mohammed_Rahil_CV_.pdf', '_blank');
+                }, 800);
+                return;
+            }
+
+            if (cmd === 'date') {
+                printOutput(new Date().toString());
+                return;
+            }
+
+            if (cmd === 'gui') {
+                printOutput(fileSystem['gui']);
+                // Redirects after 1.5 seconds
+                setTimeout(() => {
+                    window.location.href = 'https://therahil.shop'; 
+                }, 1500);
+                return;
+            }
+            
+            if (cmd.startsWith('echo ')) {
+                printOutput(cmd.substring(5));
+                return;
+            }
+
+            if (cmd.startsWith('sudo')) {
+                printOutput("<span class='error'>rahil is not in the sudoers file. This incident will be reported.</span>");
+                return;
+            }
+            
+            if (cmd === 'ls') {
+                 printOutput("<span class='accent'>help.sh  whoami.txt  skills.json  experience.log  projects.dir  contact.cfg</span>");
+                 return;
+            }
+
+            // Lookup command in filesystem
+            const response = fileSystem[cmd];
+
+            if (response) {
+                printOutput(response);
+            } else {
+                printOutput(`<span class="error">bash: ${cmd}: command not found</span><br>Type 'help' to see available commands.`);
+            }
+        }
+
+        // Start Boot Sequence
+        window.onload = runBootSequence;
+
+        // Keep input focused
+        document.addEventListener('click', () => {
+            cmdInput.focus();
+        });
+
+    </script>
+</body>
+</html>
