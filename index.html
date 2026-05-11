@@ -205,6 +205,8 @@
   <span class="highlight">projects</span>   - View cloud and automation projects
   <span class="highlight">contact</span>    - Display contact information
   <span class="highlight">neofetch</span>   - Display system architecture info
+  <span class="highlight">cat</span>        - Read file contents (e.g., cat whoami.txt)
+  <span class="highlight">theme</span>      - Change terminal color (green, amber, cyan)
   <span class="highlight">clear</span>      - Clear terminal output
   <span class="highlight">download</span>   - Download Resume (PDF)
   <span class="highlight">date</span>       - Print the system date and time
@@ -379,7 +381,7 @@ custom Bash scripts to alert the engineering team instantly via Discord webhooks
             } else if (e.key === 'Tab') {
                 e.preventDefault();
                 const current = this.value.toLowerCase();
-                const cmds = Object.keys(fileSystem).concat(['ls', 'sudo', 'sudo rm -rf /', 'matrix', 'neofetch']);
+                const cmds = Object.keys(fileSystem).concat(['ls', 'sudo', 'sudo rm -rf /', 'matrix', 'neofetch', 'theme', 'cat', 'whoami.txt', 'skills.json', 'experience.log', 'contact.cfg']);
                 const match = cmds.find(c => c.startsWith(current));
                 if (match) {
                     this.value = match;
@@ -444,6 +446,48 @@ custom Bash scripts to alert the engineering team instantly via Discord webhooks
                 return;
             }
             
+            if (cmd.startsWith('theme')) {
+                const parts = cmd.split(' ');
+                if (parts.length === 1) {
+                    printOutput("Available themes: <span class='highlight' style='color:#00ff41'>green</span>, <span class='highlight' style='color:#FFB000'>amber</span>, <span class='highlight' style='color:#00FFFF'>cyan</span>, <span class='highlight' style='color:#ff79c6'>dracula</span><br>Usage: theme [color]");
+                    return;
+                }
+                const color = parts[1];
+                const themes = {
+                    green: { text: '#00ff41', glow: 'rgba(0, 255, 65, 0.4)' },
+                    amber: { text: '#FFB000', glow: 'rgba(255, 176, 0, 0.4)' },
+                    cyan:  { text: '#00FFFF', glow: 'rgba(0, 255, 255, 0.4)' },
+                    dracula: { text: '#ff79c6', glow: 'rgba(255, 121, 198, 0.4)' }
+                };
+                if (themes[color]) {
+                    document.documentElement.style.setProperty('--text-color', themes[color].text);
+                    document.documentElement.style.setProperty('--glow', '0 0 5px ' + themes[color].glow);
+                    printOutput(`Theme switched to <span style="color:${themes[color].text}">${color}</span>.`);
+                } else {
+                    printOutput(`<span class="error">Theme '${color}' not found.</span>`);
+                }
+                return;
+            }
+
+            if (cmd.startsWith('cat ')) {
+                const file = cmd.split(' ')[1];
+                const fileMap = {
+                    'whoami.txt': 'whoami',
+                    'skills.json': 'skills',
+                    'experience.log': 'experience',
+                    'contact.cfg': 'contact',
+                    'help.sh': 'help'
+                };
+                if (fileMap[file]) {
+                    printOutput(fileSystem[fileMap[file]]);
+                } else if (file === 'projects.dir') {
+                    printOutput("<span class='error'>cat: projects.dir: Is a directory</span>");
+                } else {
+                    printOutput(`<span class="error">cat: ${file}: No such file or directory</span>`);
+                }
+                return;
+            }
+
             if (cmd.startsWith('echo ')) {
                 printOutput(cmd.substring(5));
                 return;
