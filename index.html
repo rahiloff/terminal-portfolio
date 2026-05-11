@@ -28,6 +28,7 @@
 
         body, html {
             height: 100%;
+            height: 100dvh;
             background-color: var(--bg-color);
             color: var(--text-color);
             font-family: 'Fira Code', monospace;
@@ -74,6 +75,7 @@
         .output-line {
             margin-bottom: 4px;
             word-wrap: break-word;
+            overflow-wrap: anywhere;
             white-space: pre-wrap;
         }
 
@@ -110,10 +112,11 @@
             color: transparent; /* Hide actual text, show via span */
             outline: none;
             font-family: inherit;
-            font-size: inherit;
+            font-size: 16px; /* Crucial: Prevents iOS auto-zoom */
             width: 1px;
             height: 1px;
-            position: absolute;
+            position: fixed;
+            top: -100px;
             opacity: 0;
         }
 
@@ -149,16 +152,32 @@
         
         .ascii-art {
             color: var(--prompt-user);
-            font-size: 12px;
+            font-size: clamp(5px, 2vw, 12px);
             line-height: 1.2;
             margin-bottom: 15px;
             overflow-x: hidden;
             white-space: pre;
         }
+        
+        .neofetch-container {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .neofetch-logo {
+            color: #E95420;
+            font-weight: bold;
+            line-height: 1.2;
+            font-size: clamp(8px, 2.5vw, 13px);
+            white-space: pre;
+        }
 
         @media (max-width: 768px) {
-            .ascii-art { font-size: 8px; }
             body { font-size: 13px; }
+            #terminal-wrapper { padding: 12px; }
+            .neofetch-container { gap: 10px; }
         }
     </style>
 </head>
@@ -545,8 +564,8 @@ custom Bash scripts to alert the engineering team instantly via Discord webhooks
             
             if (cmd === 'neofetch') {
                 const uptime = Math.max(1, Math.floor(performance.now() / 60000));
-                const neo = `<div style="display:flex; align-items:center; gap: 20px; flex-wrap: wrap;">
-<div style="color: #E95420; font-weight: bold; line-height: 1.2; font-size: 13px;" class="ascii-art">
+                const neo = `<div class="neofetch-container">
+<div class="neofetch-logo">
          _-_         
       /~~   ~~\\      
    /~~         ~~\\   
